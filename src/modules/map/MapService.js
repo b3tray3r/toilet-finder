@@ -131,7 +131,7 @@ export class MapService {
           this.setView(...DEFAULT_CENTER)
           resolve(false)
         },
-        { timeout: 8000, enableHighAccuracy: true }
+        { timeout: 15000, enableHighAccuracy: false, maximumAge: 60000 }
       )
     })
   }
