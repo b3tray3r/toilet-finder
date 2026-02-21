@@ -10,6 +10,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
-    autoRefreshToken: true
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    lock: async (name, acquireTimeout, fn) => {
+      // Обход бага LockManager в PWA/Service Worker окружении
+      return await fn()
+    }
   }
 })
