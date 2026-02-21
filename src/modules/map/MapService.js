@@ -7,9 +7,6 @@ const DEFAULT_CENTER = [
 ]
 const DEFAULT_ZOOM = parseInt(import.meta.env.VITE_DEFAULT_ZOOM) || 13
 
-/**
- * Иконки маркеров
- */
 const createIcon = (color, star = false) => L.divIcon({
   html: `<div class="map-marker map-marker--${color}">${star ? '⭐' : '🚾'}</div>`,
   className: '',
@@ -34,18 +31,15 @@ export class MapService {
   constructor() {
     this.map = null
     this.clusterGroup = null
-    this.markers = new Map() // toilet.id → marker
+    this.markers = new Map()       // toilet.id → marker
+    this.toiletData = new Map()    // toilet.id → toilet (актуальные данные)
     this.clickCallback = null
     this.moveCallback = null
     this._moveDebounceTimer = null
+    this._userMarker = null        // маркер геолокации пользователя
+    this._userCircle = null        // круг точности геолокации
   }
 
-  /**
-   * Инициализация карты
-   * @param {string} elementId
-   * @param {Function} onMapClick - (lat, lng) => void
-   * @param {Function} onMapMove - (bounds) => void
-   */
   init(elementId, onMapClick, onMapMove) {
     this.map = L.map(elementId, {
       zoomControl: false,
@@ -82,11 +76,37 @@ export class MapService {
     return this
   }
 
-  /**
-   * Установить вид карты
-   */
   setView(lat, lng, zoom = DEFAULT_ZOOM) {
     this.map.setView([lat, lng], zoom)
+  }
+
+  /**
+   * Показать маркер пользователя на карте
+   */
+  _showUserMarker(lat, lng, accuracy) {
+    // Удалить старые если есть
+    if (this._userMarker) this.map.removeLayer(this._userMarker)
+    if (this._userCircle) this.map.removeLayer(this._userCircle)
+
+    // Круг точности
+    this._userCircle = L.circle([lat, lng], {
+      radius: accuracy,
+      color: '#6c63ff',
+      fillColor: '#6c63ff',
+      fillOpacity: 0.1,
+      weight: 1
+    }).addTo(this.map)
+
+    // Маркер позиции
+    this._userMarker = L.circleMarker([lat, lng], {
+      radius: 8,
+      color: '#ffffff',
+      fillColor: '#6c63ff',
+      fillOpacity: 1,
+      weight: 3
+    }).addTo(this.map)
+
+    this._userMarker.bindPopup('📍 Вы здесь')
   }
 
   /**
@@ -101,14 +121,17 @@ export class MapService {
       }
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          this.setView(pos.coords.latitude, pos.coords.longitude)
+          const { latitude, longitude, accuracy } = pos.coords
+          this.setView(latitude, longitude)
+          this._showUserMarker(latitude, longitude, accuracy)
           resolve(true)
         },
-        () => {
+        (err) => {
+          console.warn('Геолокация недоступна:', err.message)
           this.setView(...DEFAULT_CENTER)
           resolve(false)
         },
-        { timeout: 5000 }
+        { timeout: 8000, enableHighAccuracy: true }
       )
     })
   }
@@ -118,9 +141,8 @@ export class MapService {
   }
 
   /**
-   * Синхронизировать маркеры с массивом туалетов
-   * @param {Array} toilets
-   * @param {Function} popupBuilder - (toilet) => HTMLString
+   * Синхронизировать маркеры.
+   * Popup пересоздаётся при каждом открытии — берёт актуальные данные из toiletData.
    */
   syncMarkers(toilets, popupBuilder) {
     const incomingIds = new Set(toilets.map(t => t.id))
@@ -130,30 +152,59 @@ export class MapService {
       if (!incomingIds.has(id)) {
         this.clusterGroup.removeLayer(marker)
         this.markers.delete(id)
+        this.toiletData.delete(id)
       }
     }
 
-    // Добавить новые маркеры
     for (const toilet of toilets) {
+      // Всегда обновляем данные туалета
+      this.toiletData.set(toilet.id, toilet)
+
       if (this.markers.has(toilet.id)) {
-        // Обновить иконку (votes/status мог измениться)
-        this.markers.get(toilet.id).setIcon(getIcon(toilet))
+        // Обновить иконку и переоткрыть popup с актуальными данными
+        const marker = this.markers.get(toilet.id)
+        marker.setIcon(getIcon(toilet))
+        // Обновить содержимое если popup открыт
+        if (marker.isPopupOpen()) {
+          marker.getPopup().setContent(() => {
+            const div = document.createElement('div')
+            div.innerHTML = popupBuilder(this.toiletData.get(toilet.id))
+            return div
+          })
+          marker.getPopup().update()
+        }
         continue
       }
+
+      // Новый маркер — popup строится при открытии из актуальных данных
       const marker = L.marker([toilet.lat, toilet.lng], { icon: getIcon(toilet) })
       marker.bindPopup(() => {
         const div = document.createElement('div')
-        div.innerHTML = popupBuilder(toilet)
+        div.innerHTML = popupBuilder(this.toiletData.get(toilet.id))
         return div
       }, { maxWidth: 280 })
+
       this.markers.set(toilet.id, marker)
       this.clusterGroup.addLayer(marker)
     }
   }
 
   /**
-   * Добавить временный маркер выбора точки
+   * Принудительно обновить popup конкретного туалета
    */
+  refreshMarker(toiletId, updatedToilet, popupBuilder) {
+    this.toiletData.set(toiletId, updatedToilet)
+    const marker = this.markers.get(toiletId)
+    if (!marker) return
+    marker.setIcon(getIcon(updatedToilet))
+    if (marker.isPopupOpen()) {
+      const div = document.createElement('div')
+      div.innerHTML = popupBuilder(updatedToilet)
+      marker.getPopup().setContent(div)
+      marker.getPopup().update()
+    }
+  }
+
   setTempMarker(lat, lng) {
     if (this._tempMarker) this.map.removeLayer(this._tempMarker)
     this._tempMarker = L.marker([lat, lng], {

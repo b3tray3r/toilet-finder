@@ -140,7 +140,11 @@ async function handleVote(toiletId) {
   if (!authStore.isAuthenticated) return alert('Войдите, чтобы голосовать')
   try {
     await toiletsStore.vote(toiletId, authStore.user.id)
-    mapService.syncMarkers(toiletsStore.toilets, buildPopup)
+    // Обновить конкретный маркер с актуальными данными
+    const updatedToilet = toiletsStore.toilets.find(t => t.id === toiletId)
+    if (updatedToilet) {
+      mapService.refreshMarker(toiletId, updatedToilet, buildPopup)
+    }
   } catch (e) {
     alert(e.message)
   }
