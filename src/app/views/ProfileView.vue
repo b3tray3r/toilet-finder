@@ -266,11 +266,12 @@ async function logout() {
 .bottom-nav {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  height: var(--bottom-nav-height);
+  height: calc(var(--bottom-nav-height) + var(--safe-bottom));
   background: var(--bg-card);
   border-top: 1px solid var(--border);
   display: flex;
   z-index: 100;
+  padding-bottom: var(--safe-bottom);
 }
 
 .bottom-nav__item {

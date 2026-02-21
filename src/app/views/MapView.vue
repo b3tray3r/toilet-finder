@@ -254,7 +254,7 @@ onBeforeUnmount(() => {
   z-index: 1000;
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: calc(12px + var(--safe-top)) 16px 12px;
   background: linear-gradient(to bottom, rgba(13,13,26,0.95) 0%, transparent 100%);
 }
 
@@ -289,7 +289,7 @@ onBeforeUnmount(() => {
 .map-controls {
   position: absolute;
   right: 20px;
-  bottom: calc(var(--bottom-nav-height) + 60px + 20px); /* nav + ad + gap */
+  bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 60px + 20px);
   z-index: 1001;
   display: flex;
   flex-direction: column;
@@ -299,7 +299,7 @@ onBeforeUnmount(() => {
 
 /* Если нет рекламы (подписчик) — кнопки ниже */
 .map-controls--no-ad {
-  bottom: calc(var(--bottom-nav-height) + 20px);
+  bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 20px);
 }
 
 .map-controls__geo {
@@ -370,11 +370,12 @@ onBeforeUnmount(() => {
 .bottom-nav {
   position: absolute;
   bottom: 0; left: 0; right: 0;
-  height: var(--bottom-nav-height);
+  height: calc(var(--bottom-nav-height) + var(--safe-bottom));
   background: var(--bg-card);
   border-top: 1px solid var(--border);
   display: flex;
   z-index: 1000;
+  padding-bottom: var(--safe-bottom);
 }
 
 .bottom-nav__item {

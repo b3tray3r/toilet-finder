@@ -8,11 +8,13 @@
     <div class="app-loading__spinner"></div>
     <p>Загрузка...</p>
   </div>
+  <PwaPrompt />
 </template>
 
 <script setup>
 import { RouterView } from 'vue-router'
 import { useAuthStore } from '@/modules/auth/store'
+import PwaPrompt from '@/shared/components/PwaPrompt.vue'
 
 const authStore = useAuthStore()
 </script>
