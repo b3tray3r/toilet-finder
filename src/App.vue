@@ -1,5 +1,9 @@
 <template>
-  <RouterView v-if="!authStore.loading" />
+  <RouterView v-if="!authStore.loading" v-slot="{ Component }">
+    <KeepAlive include="MapView">
+      <component :is="Component" />
+    </KeepAlive>
+  </RouterView>
   <div v-else class="app-loading">
     <div class="app-loading__spinner"></div>
     <p>Загрузка...</p>

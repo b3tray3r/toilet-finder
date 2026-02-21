@@ -16,7 +16,7 @@
     <div v-if="!authStore.isSubscribed" id="ad-banner" class="map-view__ad"></div>
 
     <!-- Кнопки справа: геолокация + FAB -->
-    <div class="map-controls">
+    <div class="map-controls" :class="{ 'map-controls--no-ad': authStore.isSubscribed }">
       <button class="map-controls__geo" @click="centerOnUser" title="Моя геолокация">📍</button>
       <button
         class="fab"
@@ -78,8 +78,12 @@
   </div>
 </template>
 
+<script>
+export default { name: 'MapView' }
+</script>
+
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, onActivated, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { RouterLink } from 'vue-router'
 import { MapService } from '@/modules/map/MapService'
@@ -218,6 +222,13 @@ onMounted(async () => {
 // Следим за городом в URL
 watch(city, () => loadToilets())
 
+// При возврате из другого роута (KeepAlive) — обновить размер карты
+onActivated(() => {
+  if (mapService.map) {
+    mapService.map.invalidateSize()
+  }
+})
+
 onBeforeUnmount(() => {
   mapService.destroy()
   document.removeEventListener('click', handlePopupAction)
@@ -278,12 +289,17 @@ onBeforeUnmount(() => {
 .map-controls {
   position: absolute;
   right: 20px;
-  bottom: calc(var(--bottom-nav-height) + 20px);
+  bottom: calc(var(--bottom-nav-height) + 60px + 20px); /* nav + ad + gap */
   z-index: 1001;
   display: flex;
   flex-direction: column;
   gap: 12px;
   align-items: center;
+}
+
+/* Если нет рекламы (подписчик) — кнопки ниже */
+.map-controls--no-ad {
+  bottom: calc(var(--bottom-nav-height) + 20px);
 }
 
 .map-controls__geo {
@@ -309,6 +325,7 @@ onBeforeUnmount(() => {
   bottom: var(--bottom-nav-height);
   left: 0; right: 0;
   z-index: 1000;
+  min-height: 60px;
 }
 
 /* FAB */
