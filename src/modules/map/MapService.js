@@ -115,23 +115,48 @@ export class MapService {
   async centerOnUser() {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
+        console.warn('Геолокация не поддерживается браузером')
         this.setView(...DEFAULT_CENTER)
         resolve(false)
         return
       }
+
+      let resolved = false
+
+      // Таймаут на случай если браузер вообще не отвечает
+      const fallbackTimer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true
+          console.warn('Геолокация: нет ответа за 10 сек, используем Москву')
+          this.setView(...DEFAULT_CENTER)
+          resolve(false)
+        }
+      }, 10000)
+
       navigator.geolocation.getCurrentPosition(
         (pos) => {
+          if (resolved) return
+          resolved = true
+          clearTimeout(fallbackTimer)
           const { latitude, longitude, accuracy } = pos.coords
+          console.log('Геолокация получена:', latitude, longitude, 'точность:', accuracy)
           this.setView(latitude, longitude)
           this._showUserMarker(latitude, longitude, accuracy)
           resolve(true)
         },
         (err) => {
-          console.warn('Геолокация недоступна:', err.message)
+          if (resolved) return
+          resolved = true
+          clearTimeout(fallbackTimer)
+          console.warn('Геолокация ошибка:', err.code, err.message)
           this.setView(...DEFAULT_CENTER)
           resolve(false)
         },
-        { timeout: 15000, enableHighAccuracy: false, maximumAge: 60000 }
+        {
+          timeout: 9000,
+          enableHighAccuracy: false,
+          maximumAge: 30000
+        }
       )
     })
   }

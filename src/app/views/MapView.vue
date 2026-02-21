@@ -10,26 +10,23 @@
         <span class="header-brand__title">Найди туалет</span>
         <span class="header-brand__city">{{ cityLabel }}</span>
       </div>
-      <div class="header-actions">
-        <button class="icon-btn" @click="centerOnUser" title="Моя геолокация">📍</button>
-        <RouterLink to="/profile" class="icon-btn" title="Профиль">
-          {{ authStore.isAuthenticated ? '👤' : '🔑' }}
-        </RouterLink>
-      </div>
     </header>
 
     <!-- Рекламный баннер -->
     <div v-if="!authStore.isSubscribed" id="ad-banner" class="map-view__ad"></div>
 
-    <!-- FAB — добавить туалет -->
-    <button
-      class="fab"
-      :class="{ 'fab--active': addMode }"
-      @click="toggleAddMode"
-      :title="addMode ? 'Отмена' : 'Добавить туалет'"
-    >
-      {{ addMode ? '✕' : '+' }}
-    </button>
+    <!-- Кнопки справа: геолокация + FAB -->
+    <div class="map-controls">
+      <button class="map-controls__geo" @click="centerOnUser" title="Моя геолокация">📍</button>
+      <button
+        class="fab"
+        :class="{ 'fab--active': addMode }"
+        @click="toggleAddMode"
+        :title="addMode ? 'Отмена' : 'Добавить туалет'"
+      >
+        {{ addMode ? '✕' : '+' }}
+      </button>
+    </div>
 
     <!-- Подсказка режима добавления -->
     <Transition name="fade">
@@ -179,8 +176,10 @@ async function onToiletAdded() {
 }
 
 async function centerOnUser() {
-  await mapService.centerOnUser()
-  await loadToilets()
+  console.log('Запрашиваем геолокацию...')
+  const success = await mapService.centerOnUser()
+  console.log('Геолокация результат:', success)
+  if (success) await loadToilets()
 }
 
 onMounted(async () => {
@@ -238,14 +237,12 @@ onBeforeUnmount(() => {
   height: 100%;
 }
 
-/* Шапка */
 .map-view__header {
   position: absolute;
   top: 0; left: 0; right: 0;
   z-index: 1000;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 12px 16px;
   background: linear-gradient(to bottom, rgba(13,13,26,0.95) 0%, transparent 100%);
 }
@@ -277,27 +274,34 @@ onBeforeUnmount(() => {
   text-transform: uppercase;
 }
 
-.header-actions {
+/* Кнопки управления справа */
+.map-controls {
+  position: absolute;
+  right: 20px;
+  bottom: calc(var(--bottom-nav-height) + 20px);
+  z-index: 1001;
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
 }
 
-.icon-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+.map-controls__geo {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
   background: var(--bg-card);
   border: 1px solid var(--border);
+  font-size: 20px;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  cursor: pointer;
-  text-decoration: none;
+  box-shadow: var(--shadow);
   transition: background 0.2s;
 }
 
-.icon-btn:hover { background: var(--bg-elevated); }
+.map-controls__geo:hover { background: var(--bg-elevated); }
 
 /* Реклама */
 .map-view__ad {
@@ -309,10 +313,6 @@ onBeforeUnmount(() => {
 
 /* FAB */
 .fab {
-  position: absolute;
-  bottom: calc(var(--bottom-nav-height) + 72px);
-  right: 20px;
-  z-index: 1001;
   width: 56px;
   height: 56px;
   border-radius: 18px;
