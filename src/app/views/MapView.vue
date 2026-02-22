@@ -167,8 +167,11 @@ function toggleAddMode() {
 
 function closeAddModal() {
   showAddModal.value = false
-  addMode.value = false
-  mapService.removeTempMarker()
+  // Небольшая задержка чтобы клик не проваливался через оверлей в карту
+  setTimeout(() => {
+    addMode.value = false
+    mapService.removeTempMarker()
+  }, 50)
 }
 
 async function onToiletAdded() {
@@ -189,9 +192,9 @@ async function centerOnUser() {
 onMounted(async () => {
   mapService.init(
     'map',
-    // onClick
+    // onClick — игнорируем если модалка уже открыта
     (lat, lng) => {
-      if (!addMode.value) return
+      if (!addMode.value || showAddModal.value) return
       selectedLat.value = lat
       selectedLng.value = lng
       mapService.setTempMarker(lat, lng)
